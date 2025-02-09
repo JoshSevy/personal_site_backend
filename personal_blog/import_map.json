@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "dotenv": "https://deno.land/x/dotenv@v3.2.0/mod.ts",
+    "supabase": "jsr:@supabase/supabase-js@2",
+    "graphql": "https://deno.land/x/graphql_deno@v15.0.0/mod.ts",
+    "pg": "https://deno.land/x/postgres@v0.14.2/mod.ts",
+    "gql": "https://deno.land/x/gql@1.1.2/mod.ts",
+    "graphql_tools": "https://deno.land/x/graphql_tools@0.0.2/mod.ts",
+    "graphql_tag": "https://deno.land/x/graphql_tag@0.0.1/mod.ts"
+  }
+}
