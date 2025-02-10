@@ -29,15 +29,34 @@ const server = new Server({
     handler: async (req) => {
         const { pathname } = new URL(req.url);
 
-        if (pathname === "graphql") {
-            const res = await GraphQLHTTP<Request>({
-                schema,
-                graphiql: true,
-            })(req);
-            return handleCors(req, res);
+        if (pathname === "/") {
+            const html = await Deno.readTextFile("./index.html");
+            return new Response(html, {
+                headers: {
+                    "Content-Type": "text/html",
+                },
+            });
         }
 
-        return handleCors(req, new Response("Not Found", { status: 404 }));
+        if (pathname === "/health") {
+            return new Response("OK", { status: 200 });
+        }
+
+        if (pathname === "/graphql") {
+            if (req.method === "POST") {
+                return await GraphQLHTTP<Request>({
+                    schema,
+                })(req);
+            }
+
+            if (req.method === "OPTIONS") {
+                return new Response(null, { headers: handleCORS(req) });
+            }
+
+            return new Response("Method Not Allowed", { status: 405 });
+        }
+
+        return new Response("Not Found", { status: 404 });
     },
     port: 3000,
 });
