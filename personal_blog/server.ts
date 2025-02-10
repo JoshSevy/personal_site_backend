@@ -27,36 +27,41 @@ const schema = makeExecutableSchema({ resolvers, typeDefs });
 
 const server = new Server({
     handler: async (req) => {
-        const { pathname } = new URL(req.url);
+        try {
+            console.log(`Handling request: ${req.method} ${req.url}`);
+            const { pathname } = new URL(req.url);
 
-        if (pathname === "/") {
-            const html = await Deno.readTextFile("./index.html");
-            return new Response(html, {
-                headers: {
-                    "Content-Type": "text/html",
-                },
-            });
-        }
-
-        if (pathname === "/health") {
-            return new Response("OK", { status: 200 });
-        }
-
-        if (pathname === "/graphql") {
-            if (req.method === "POST") {
-                return await GraphQLHTTP<Request>({
-                    schema,
-                })(req);
+            if (pathname === "/") {
+                return new Response(
+                    JSON.stringify({ message: "API is running. Use /graphql for queries." }),
+                    {
+                        headers: { "Content-Type": "application/json" },
+                        status: 200,
+                    }
+                );
             }
 
-            if (req.method === "OPTIONS") {
-                return new Response(null, { headers: handleCORS(req) });
+            if (pathname === "/graphql") {
+                if (req.method === "OPTIONS") {
+                    return new Response(null, { headers: handleCORS(req) });
+                }
+
+                if (req.method === "POST") {
+                    return await GraphQLHTTP<Request>({ schema })(req);
+                }
+
+                return new Response("Method Not Allowed", { status: 405 });
             }
 
-            return new Response("Method Not Allowed", { status: 405 });
-        }
+            if (pathname === "/health") {
+                return new Response("OK", { status: 200 });
+            }
 
-        return new Response("Not Found", { status: 404 });
+            return new Response("Not Found", { status: 404 });
+        } catch (error) {
+            console.error("Internal Server Error:", error);
+            return new Response("Internal Server Error", { status: 500 });
+        }
     },
     port: 3000,
 });
