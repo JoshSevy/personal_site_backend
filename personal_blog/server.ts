@@ -4,12 +4,8 @@ import { makeExecutableSchema } from "https://deno.land/x/graphql_tools@0.0.2/mo
 import { resolvers } from "./graphql/resolvers.ts";
 import { typeDefs } from "./graphql/typedefs.ts";
 
-import { config } from "dotenv";
-
-const env = config();
-
-const SUPABASE_URL = env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || (() => { throw new Error("SUPABASE_URL is not defined") })();
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || (() => { throw new Error("SUPABASE_ANON_KEY is not defined") })();
 
 console.log("Supabase URL:", SUPABASE_URL);
 console.log("Supabase Anon Key:", SUPABASE_ANON_KEY);
