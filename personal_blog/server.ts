@@ -14,18 +14,34 @@ const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY;
 console.log("Supabase URL:", SUPABASE_URL);
 console.log("Supabase Anon Key:", SUPABASE_ANON_KEY);
 
+function handleCors(req: Request, res: Response) {
+    const headers = new Headers(res.headers);
+    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+    if (req.method === "OPTIONS") {
+        return new Response(null, { headers });
+    }
+
+    return new Response(res.body, { ...res, headers });
+}
+
 const schema = makeExecutableSchema({ resolvers, typeDefs });
 
 const server = new Server({
     handler: async (req) => {
         const { pathname } = new URL(req.url);
 
-        return pathname === "/graphql"
-               ? await GraphQLHTTP<Request>({
+        if (pathname === "/graphql") {
+            const res = await GraphQLHTTP<Request>({
                 schema,
                 graphiql: true,
-            })(req)
-               : new Response("Not Found", { status: 404 });
+            })(req);
+            return handleCors(req, res);
+        }
+
+        return handleCors(req, new Response("Not Found", { status: 404 }));
     },
     port: 3000,
 });
