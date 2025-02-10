@@ -16,7 +16,7 @@ console.log("Supabase Anon Key:", SUPABASE_ANON_KEY);
 
 function handleCors(req: Request, res: Response) {
     const headers = new Headers(res.headers);
-    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set("Access-Control-Allow-Origin", Deno.env.get("ENV") === "production" ? "https://www.joshuasevy.com" : "http://localhost:4200");
     headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
@@ -33,7 +33,7 @@ const server = new Server({
     handler: async (req) => {
         const { pathname } = new URL(req.url);
 
-        if (pathname === "/graphql") {
+        if (pathname === "graphql") {
             const res = await GraphQLHTTP<Request>({
                 schema,
                 graphiql: true,
