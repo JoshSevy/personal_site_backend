@@ -25,6 +25,16 @@ const createPost = async (args: any) => {
     return data;
 };
 
+const updatePost = async (args: any) => {
+    const { data, error } = await supabase
+        .from("posts")
+        .update({ title: args.title, content: args.content, author: args.author })
+        .eq("id", args.id)
+        .single();
+    if (error) throw new Error(error.message);
+    return data;
+}
+
 export const resolvers = {
     Query: {
         posts: () => getPosts(),
