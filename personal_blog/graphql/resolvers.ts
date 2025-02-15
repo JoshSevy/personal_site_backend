@@ -35,6 +35,16 @@ const updatePost = async (args: any) => {
     return data;
 }
 
+const deletePost = async (args: any) => {
+    const { data, error } = await supabase
+        .from("posts")
+        .delete()
+        .eq("id", args.id)
+        .single();
+    if (error) throw new Error(error.message);
+    return data;
+}
+
 export const resolvers = {
     Query: {
         posts: () => getPosts(),
