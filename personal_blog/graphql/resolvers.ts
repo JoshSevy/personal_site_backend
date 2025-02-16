@@ -53,10 +53,21 @@ const deletePost = async (args: any) => {
     return data;
 }
 
+const fetchGitHubTrophies = async (username: string): Promise<string> => {
+    const response = await fetch(`https://github-profile-trophy.vercel.app/?username=${username}&theme=darkhub`);
+    if (!response.ok) {
+        throw new Error("Failed to fetch trophies from GitHub Profile Trophy.");
+    }
+    return await response.text(); // Response is typically SVG or HTML
+};
+
 export const resolvers = {
     Query: {
         posts: () => getPosts(),
         post: (_: any, args: any) => getPost(args),
+        trophies: async (_: any, args: { username: string }) => {
+            return await fetchGitHubTrophies(args.username);
+        },
     },
     Mutation: {
         createPost: (_: any, args: any) => createPost(args),
