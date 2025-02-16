@@ -1,11 +1,8 @@
 import { Server } from "https://deno.land/std@0.166.0/http/server.ts";
-import { GraphQLHTTP } from "https://deno.land/x/gql@1.1.2/mod.ts";
-import { makeExecutableSchema } from "https://deno.land/x/graphql_tools@0.0.2/mod.ts";
+import { GraphQLHTTP } from "gql";
+import { makeExecutableSchema } from "graphql_tools";
 import { resolvers } from "./graphql/resolvers.ts";
 import { typeDefs } from "./graphql/typedefs.ts";
-
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || (() => { throw new Error("SUPABASE_URL is not defined") })();
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || (() => { throw new Error("SUPABASE_ANON_KEY is not defined") })();
 
 function handleCors(req: Request): Headers {
     const headers = new Headers();
