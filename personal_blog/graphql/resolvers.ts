@@ -25,15 +25,23 @@ const createPost = async (args: any) => {
     return data;
 };
 
-const updatePost = async (args: any) => {
+const updatePost = async (_: any, { id, title, content, author }: { id: string, title: string, content: string, author: string }) => {
+    console.log(`Updating post with id: ${id}, title: ${title}, content: ${content}, author: ${author}`);
+
     const { data, error } = await supabase
-        .from("posts")
-        .update({ title: args.title, content: args.content, author: args.author })
-        .eq("id", args.id)
+        .from('posts')
+        .update({ title, content, author })
+        .eq('id', id)
         .single();
-    if (error) throw new Error(error.message);
+
+    if (error) {
+        console.error("Error updating post:", error);
+        throw new Error("Failed to update post");
+    }
+
+    console.log("Update successful:", data);
     return data;
-}
+};
 
 const deletePost = async (args: any) => {
     const { data, error } = await supabase
