@@ -54,11 +54,22 @@ const deletePost = async (args: any) => {
 }
 
 const fetchGitHubTrophies = async (username: string): Promise<string> => {
-    const response = await fetch(`https://github-profile-trophy.vercel.app/?username=${username}&theme=darkhub`);
-    if (!response.ok) {
-        throw new Error("Failed to fetch trophies from GitHub Profile Trophy.");
+    try {
+        console.log(`Fetching GitHub trophies for username: ${username}`);
+        const response = await fetch(`https://github-profile-trophy.vercel.app/?username=${username}&theme=darkhub`);
+
+        if (!response.ok) {
+            console.error(`Failed to fetch trophies. Status: ${response.status}, StatusText: ${response.statusText}`);
+            throw new Error("Failed to fetch trophies from GitHub Profile Trophy.");
+        }
+
+        const data = await response.text();
+        console.log("Fetched trophies successfully");
+        return data;
+    } catch (error) {
+        console.error("Error in fetchGitHubTrophies:", error);
+        throw error;
     }
-    return await response.text(); // Response is typically SVG or HTML
 };
 
 export const resolvers = {
