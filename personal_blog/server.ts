@@ -4,12 +4,58 @@ import { makeExecutableSchema } from "graphql_tools";
 import { resolvers } from "./graphql/resolvers.ts";
 import { typeDefs } from "./graphql/typedefs.ts";
 
+const BASE_URL = "https://api.joshuasevy.com";
+
 function handleCors(req: Request): Headers {
     const headers = new Headers();
     headers.set("Access-Control-Allow-Origin", "*"); // Use a specific domain in production
     headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
     return headers;
+}
+
+// Function to fetch blog posts (replace with actual data fetching logic)
+async function fetchBlogPosts() {
+    // Mocked data for demonstration
+    return [
+        { id: "1", title: "Getting Started with Angular", publishDate: "2025-02-08" },
+        { id: "2", title: "Improving App Performance", publishDate: "2025-01-15" },
+    ];
+}
+
+// Function to generate the sitemap XML
+async function generateSitemap() {
+    const staticPages = [
+        { path: "/", priority: "1.0", lastmod: '' },
+        { path: "/about", priority: "0.8", lastmod: '' },
+        { path: "/resume", priority: "0.8", lastmod: '' },
+        { path: "/contact", priority: "0.6", lastmod: '' },
+        { path: "/blog", priority: "0.7", lastmod: '' },
+    ];
+
+    const blogPosts = await fetchBlogPosts();
+    const dynamicPages = blogPosts.map(post => ({
+        path: `/blog/${post.id}`,
+        priority: "0.6",
+        lastmod: post.publishDate,
+    }));
+
+    const allPages = [...staticPages, ...dynamicPages];
+
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  ${allPages
+        .map(
+            ({ path, priority, lastmod }) => `
+  <url>
+    <loc>${BASE_URL}${path}</loc>
+    <lastmod>${lastmod || new Date().toISOString().split("T")[0]}</lastmod>
+    <priority>${priority}</priority>
+  </url>
+  `
+        )
+        .join("\n")}
+</urlset>`;
 }
 
 // GraphQL Schema
@@ -58,6 +104,24 @@ async function handler(req: Request): Promise<Response> {
                 headers: corsHeaders,
                 status: 405,
             });
+        }
+
+        // Sitemap Endpoint
+        if (pathname === "/sitemap") {
+            const corsHeaders = handleCors(req);
+
+            if (req.method === "GET") {
+                const sitemap = await generateSitemap();
+                return new Response(sitemap, {
+                    headers: {
+                        ...corsHeaders,
+                        "Content-Type": "application/xml",
+                    },
+                    status: 200,
+                });
+            }
+
+            return new Response("Method Not Allowed", { headers: corsHeaders, status: 405 });
         }
 
         // Health Check
