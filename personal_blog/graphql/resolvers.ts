@@ -52,5 +52,7 @@ export const resolvers = {
     },
     Mutation: {
         createPost: (_: any, args: any) => createPost(args),
+        updatePost : (_: any, args: any) => updatePost(args),
+        deletePost: (_: any, args: any) => deletePost(args),
     },
 };
