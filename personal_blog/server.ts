@@ -1,4 +1,4 @@
-import { Server } from "https://deno.land/std@0.166.0/http/server.ts";
+import { Server } from "std/http/server";
 import { GraphQLHTTP } from "gql";
 import { makeExecutableSchema } from "graphql_tools";
 import { resolvers } from "./graphql/resolvers.ts";

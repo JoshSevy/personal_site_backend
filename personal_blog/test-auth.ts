@@ -1,5 +1,5 @@
 import { createClient } from "supabase";
-import { config } from "https://deno.land/x/dotenv/mod.ts";
+import { config } from "dotenv";
 
 const env = config();
 const supabaseUrl = env.SUPABASE_URL;
