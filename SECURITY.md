@@ -14,7 +14,7 @@ We actively support security updates for the following versions:
 If you discover a security vulnerability, please report it responsibly:
 
 1. **Do NOT** open a public GitHub issue
-2. Email security details to: [your-email@example.com]
+2. Email security details to: [joshuasevy@outlook.com]
 3. Include:
    - Description of the vulnerability
    - Steps to reproduce
