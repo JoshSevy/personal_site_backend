@@ -1,7 +1,32 @@
 {
   "tasks": {
     "start": "deno run --allow-net --allow-env server.ts",
-    "dev": "deno run --watch --allow-net --allow-env server.ts"
+    "dev": "deno run --watch --allow-net --allow-env server.ts",
+    "fmt": "deno fmt",
+    "fmt:check": "deno fmt --check",
+    "lint": "deno lint",
+    "check": "deno check **/*.ts",
+    "test": "deno test --allow-all"
   },
-  "importMap": "./import_map.json"
+  "importMap": "./import_map.json",
+  "fmt": {
+    "files": {
+      "include": ["**/*.ts", "**/*.js", "**/*.json", "**/*.md"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 80,
+      "indentWidth": 2,
+      "singleQuote": false,
+      "proseWrap": "preserve"
+    }
+  },
+  "lint": {
+    "files": {
+      "include": ["**/*.ts", "**/*.js"]
+    },
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
 }
