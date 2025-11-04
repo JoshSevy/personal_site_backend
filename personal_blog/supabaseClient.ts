@@ -1,4 +1,4 @@
-import { createClient } from "supabase";
+import { createClient, SupabaseClient } from "supabase";
 
 let SUPABASE_URL: string | undefined;
 let SUPABASE_ANON_KEY: string | undefined;
@@ -22,5 +22,16 @@ if (!SUPABASE_ANON_KEY) {
     throw new Error("SUPABASE_ANON_KEY is not defined");
 }
 
-// Create Supabase client
+// Create default Supabase client (for unauthenticated requests)
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Create an authenticated Supabase client with a JWT token
+export function createAuthenticatedClient(token: string): SupabaseClient {
+    return createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+        global: {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        },
+    });
+}
