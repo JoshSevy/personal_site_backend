@@ -1,13 +1,7 @@
 {
 	"folders": [
 		{
-			"path": "../../../WebstormProjects/personal_site"
-		},
-		{
 			"path": ".."
-		},
-		{
-			"path": "../../../WebstormProjects/sevy_mono"
 		}
 	],
 	"settings": {}

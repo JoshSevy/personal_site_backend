@@ -6,15 +6,54 @@ deno.lock
 
 # Environment variables
 .env
+.env.local
+.env.*.local
+.env.*.env
 
 # Logs
 *.log
+*.log.*
 
 # IDE specific files
 .idea/
 .vscode/
+*.code-workspace
+*.iml
+*.sublime-project
+*.sublime-workspace
+.vim/
+
+# Editor backup files
+*~
+*.swp
+*.swo
+*.bak
+*.backup
+*.orig
+*.tmp
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
 
 # Compiled output
 dist/
+build/
+*.tsbuildinfo
 
-.DS_Store
+# Coverage reports
+coverage/
+*.lcov
+.nyc_output/
+
+# Temporary files
+*.tmp
+.cache/
+tmp/
+temp/
