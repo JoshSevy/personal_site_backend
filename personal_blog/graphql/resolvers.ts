@@ -82,7 +82,16 @@ const deletePost = async (_: any, args: any, context: any) => {
 const fetchGitHubTrophies = async (username: string): Promise<string> => {
     try {
         console.log(`Fetching GitHub trophies for username: ${username}`);
-        const response = await fetch(`https://github-profile-trophy.vercel.app/?username=${username}&theme=darkhub`);
+		const response = await fetch(
+			`https://github-profile-trophy.vercel.app/?username=${username}&theme=darkhub`,
+			{
+				// Some providers require explicit Accept and a non-empty UA
+				headers: {
+					"Accept": "image/svg+xml,text/html;q=0.9,*/*;q=0.8",
+					"User-Agent": "personal-site-backend/1.0 (+https://api.joshuasevy.com)",
+				},
+			},
+		);
 
         if (!response.ok) {
             console.error(`Failed to fetch trophies. Status: ${response.status}, StatusText: ${response.statusText}`);

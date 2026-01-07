@@ -31,6 +31,8 @@ function handleCors(req: Request): Headers {
 
     if (origin && ALLOWED_ORIGINS.includes(origin)) {
         headers.set("Access-Control-Allow-Origin", origin);
+		// Allow credentialed requests (cookies, Authorization) for approved origins
+		headers.set("Access-Control-Allow-Credentials", "true");
     }
 
 	headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -40,6 +42,8 @@ function handleCors(req: Request): Headers {
 		"Access-Control-Allow-Headers",
 		requestedHeaders || "Content-Type, Authorization",
 	);
+	// Make common headers visible to clients
+	headers.set("Access-Control-Expose-Headers", "Content-Type, Authorization");
     headers.set("Access-Control-Max-Age", "86400"); // 24 hours
     return headers;
 }
