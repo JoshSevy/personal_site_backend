@@ -1,6 +1,4 @@
-import { gql } from "graphql_tag";
-
-export const typeDefs = gql`
+export const typeDefs = /* GraphQL */ `
   type Post {
     id: ID!
     title: String!
