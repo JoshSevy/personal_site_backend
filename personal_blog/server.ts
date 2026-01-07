@@ -7,20 +7,39 @@ import { typeDefs } from "./graphql/typedefs.ts";
 const BASE_URL = "https://api.joshuasevy.com";
 const ALLOWED_ORIGINS = [
     "https://joshuasevy.com",
+	"https://www.joshuasevy.com",
     "http://localhost:3000",
-    "http://localhost:4000" // For development
+	"http://localhost:4000", // For development
+	"http://localhost:5173",
+	"http://127.0.0.1:5173",
+	"http://localhost:5174"
 ];
 
 function handleCors(req: Request): Headers {
     const headers = new Headers();
     const origin = req.headers.get("origin");
-    
+
+	// Ensure caches vary properly: only include preflight-related headers for OPTIONS
+	if (req.method === "OPTIONS") {
+		headers.set(
+			"Vary",
+			"Origin, Access-Control-Request-Method, Access-Control-Request-Headers",
+		);
+	} else {
+		headers.set("Vary", "Origin");
+	}
+
     if (origin && ALLOWED_ORIGINS.includes(origin)) {
         headers.set("Access-Control-Allow-Origin", origin);
     }
-    
-    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+	headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+	// Echo requested headers when present to satisfy preflight checks from various clients
+	const requestedHeaders = req.headers.get("access-control-request-headers");
+	headers.set(
+		"Access-Control-Allow-Headers",
+		requestedHeaders || "Content-Type, Authorization",
+	);
     headers.set("Access-Control-Max-Age", "86400"); // 24 hours
     return headers;
 }
@@ -135,7 +154,7 @@ async function handler(req: Request): Promise<Response> {
 
             // Handle OPTIONS (CORS Preflight)
             if (req.method === "OPTIONS") {
-                return new Response(null, { headers: corsHeaders });
+				return new Response(null, { headers: corsHeaders, status: 204 });
             }
 
             // Handle POST (GraphQL Queries/Mutations)
@@ -143,22 +162,29 @@ async function handler(req: Request): Promise<Response> {
                 try {
                     // Extract Authorization header
                     const authHeader = req.headers.get("Authorization");
-                    const token = authHeader?.startsWith("Bearer ")
-                        ? authHeader.substring(7)
-                        : null;
+					const token = authHeader?.startsWith("Bearer ")
+						? authHeader.substring(7)
+						: null;
 
                     const response = await GraphQLHTTP<Request>({
                         schema,
                         context: () => ({ authToken: token }),
                     })(req);
 
-                    // Apply CORS headers to GraphQL responses
-                    return new Response(response.body, {
-                        ...response,
-                        headers: corsHeaders,
-                    });
+					// Merge CORS headers with GraphQL response headers and preserve status
+					const mergedHeaders = new Headers(response.headers);
+					for (const [key, value] of corsHeaders.entries()) {
+						mergedHeaders.set(key, value);
+					}
+					return new Response(response.body, {
+						status: response.status,
+						statusText: response.statusText,
+						headers: mergedHeaders,
+					});
                 } catch (error) {
                     console.error("GraphQL Processing Error:", error);
+					const errorHeaders = new Headers(corsHeaders);
+					errorHeaders.set("Content-Type", "application/json");
                     return new Response(
                         JSON.stringify({
                             errors: [{
@@ -168,11 +194,8 @@ async function handler(req: Request): Promise<Response> {
                             }]
                         }),
                         {
-                            headers: {
-                                ...corsHeaders,
-                                "Content-Type": "application/json"
-                            },
-                            status: 500
+							headers: errorHeaders,
+							status: 500,
                         }
                     );
                 }
