@@ -1,7 +1,7 @@
 {
   "imports": {
     "dotenv": "https://deno.land/x/dotenv@v3.2.0/mod.ts",
-    "supabase": "jsr:@supabase/supabase-js@^2.58.0",
+    "supabase": "npm:@supabase/supabase-js@2.58.0",
     "graphql": "https://deno.land/x/graphql_deno@v15.0.0/mod.ts",
     "pg": "https://deno.land/x/postgres@v0.14.2/mod.ts",
     "gql": "https://deno.land/x/gql@1.1.2/mod.ts",

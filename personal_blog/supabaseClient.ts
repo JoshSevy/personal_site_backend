@@ -1,17 +1,18 @@
 import { createClient, SupabaseClient } from "supabase";
+import { config as loadEnv } from "dotenv";
 
 let SUPABASE_URL: string | undefined;
 let SUPABASE_ANON_KEY: string | undefined;
 
-if (Deno.env.get("DENO_DEPLOYMENT_ID")) {
+if (typeof Deno !== "undefined" && Deno.env && Deno.env.get("DENO_DEPLOYMENT_ID")) {
     // Running on Deno Deploy
     SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 } else {
-    // Running locally
-    const env = await import("https://deno.land/x/dotenv/mod.ts");
-    SUPABASE_URL = env.config().SUPABASE_URL;
-    SUPABASE_ANON_KEY = env.config().SUPABASE_ANON_KEY;
+    // Running locally — use dotenv's config()
+    const env = loadEnv();
+    SUPABASE_URL = env.SUPABASE_URL;
+    SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY;
 }
 
 if (!SUPABASE_URL) {

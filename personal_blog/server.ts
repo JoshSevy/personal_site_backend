@@ -1,8 +1,11 @@
+/// <reference lib="es2015" />
+/// <reference lib="es2020" />
+/// <reference path="./types.d.ts" />
 import { Server } from "std/http/server";
 import { GraphQLHTTP } from "gql";
 import { makeExecutableSchema } from "graphql_tools";
-import { resolvers } from "./graphql/resolvers.ts";
-import { typeDefs } from "./graphql/typedefs.ts";
+import { resolvers } from "./graphql/resolvers";
+import { typeDefs } from "./graphql/typedefs";
 
 const BASE_URL = "https://api.joshuasevy.com";
 const ALLOWED_ORIGINS = [
@@ -14,6 +17,14 @@ const ALLOWED_ORIGINS = [
 	"http://127.0.0.1:5173",
 	"http://localhost:5174"
 ];
+
+function isAllowedOrigin(origin: string | null): boolean {
+    if (!origin) return false;
+    for (let i = 0; i < ALLOWED_ORIGINS.length; i++) {
+        if (ALLOWED_ORIGINS[i] === origin) return true;
+    }
+    return false;
+}
 
 function handleCors(req: Request): Headers {
     const headers = new Headers();
@@ -29,8 +40,8 @@ function handleCors(req: Request): Headers {
 		headers.set("Vary", "Origin");
 	}
 
-    if (origin && ALLOWED_ORIGINS.includes(origin)) {
-        headers.set("Access-Control-Allow-Origin", origin);
+    if (isAllowedOrigin(origin)) {
+        headers.set("Access-Control-Allow-Origin", origin || "");
 		// Allow credentialed requests (cookies, Authorization) for approved origins
 		headers.set("Access-Control-Allow-Credentials", "true");
     }
@@ -46,14 +57,6 @@ function handleCors(req: Request): Headers {
 	headers.set("Access-Control-Expose-Headers", "Content-Type, Authorization");
     headers.set("Access-Control-Max-Age", "86400"); // 24 hours
     return headers;
-}
-
-// Custom error class for GraphQL errors
-class GraphQLError extends Error {
-    constructor(message: string, public code: string, public statusCode: number = 400) {
-        super(message);
-        this.name = "GraphQLError";
-    }
 }
 
 // Function to fetch blog posts (replace with actual data fetching logic)
@@ -77,9 +80,9 @@ async function generateSitemap() {
 
     const blogPosts = await fetchBlogPosts();
     const dynamicPages = blogPosts.map(post => ({
-        path: `/blog/${post.id}`,
-        priority: "0.6",
-        lastmod: post.publishDate,
+      path: `/blog/${post.id}`,
+      priority: "0.6",
+      lastmod: post.publishDate || '',
     }));
 
     const allPages = [...staticPages, ...dynamicPages];
@@ -101,38 +104,9 @@ async function generateSitemap() {
 }
 
 // GraphQL Schema
-const schema = makeExecutableSchema({ 
-    resolvers, 
-    typeDefs,
-    // Add error handling to the schema
-    formatError: (error) => {
-        console.error("GraphQL Error:", error);
-        
-        // Handle custom GraphQLError
-        if (error.originalError instanceof GraphQLError) {
-            return {
-                message: error.message,
-                code: error.originalError.code,
-                statusCode: error.originalError.statusCode
-            };
-        }
-        
-        // Handle validation errors
-        if (error.extensions?.code === "GRAPHQL_VALIDATION_FAILED") {
-            return {
-                message: "Invalid input data",
-                code: "VALIDATION_ERROR",
-                statusCode: 400
-            };
-        }
-        
-        // Default error response
-        return {
-            message: "An unexpected error occurred",
-            code: "INTERNAL_SERVER_ERROR",
-            statusCode: 500
-        };
-    }
+const schema = makeExecutableSchema({
+  typeDefs,
+  resolvers,
 });
 
 // Define the handler function with proper typing
@@ -158,37 +132,49 @@ async function handler(req: Request): Promise<Response> {
 
             // Handle OPTIONS (CORS Preflight)
             if (req.method === "OPTIONS") {
-				return new Response(null, { headers: corsHeaders, status: 204 });
+			return new Response(null, { headers: corsHeaders, status: 204 });
             }
 
             // Handle POST (GraphQL Queries/Mutations)
-            if (req.method === "POST") {
-                try {
-                    // Extract Authorization header
-                    const authHeader = req.headers.get("Authorization");
-					const token = authHeader?.startsWith("Bearer ")
-						? authHeader.substring(7)
-						: null;
+          if (req.method === "POST") {
+            try {
+              // Extract Authorization header
+              const authHeader = req.headers.get("Authorization");
+              const token = authHeader && authHeader.indexOf("Bearer ") === 0
+                            ? authHeader.substring(7)
+                            : null;
 
-                    const response = await GraphQLHTTP<Request>({
-                        schema,
-                        context: () => ({ authToken: token }),
-                    })(req);
+              const response = await GraphQLHTTP<Request>({
+                schema,
+                context: (request: Request) => ({ request, authToken: token })
+              })(req);
 
-					// Merge CORS headers with GraphQL response headers and preserve status
-					const mergedHeaders = new Headers(response.headers);
-					for (const [key, value] of corsHeaders.entries()) {
-						mergedHeaders.set(key, value);
-					}
-					return new Response(response.body, {
-						status: response.status,
-						statusText: response.statusText,
-						headers: mergedHeaders,
-					});
-                } catch (error) {
+              // merge CORS headers etc (existing logic)
+              const mergedHeaders = new Headers(response.headers);
+              // copy known CORS headers from corsHeaders into mergedHeaders
+              const corsHeaderNames = [
+                  "Access-Control-Allow-Origin",
+                  "Access-Control-Allow-Credentials",
+                  "Access-Control-Allow-Methods",
+                  "Access-Control-Allow-Headers",
+                  "Access-Control-Expose-Headers",
+                  "Access-Control-Max-Age",
+                  "Vary",
+              ];
+              for (let i = 0; i < corsHeaderNames.length; i++) {
+                  const name = corsHeaderNames[i];
+                  const val = corsHeaders.get(name);
+                  if (val !== null) mergedHeaders.set(name, val);
+              }
+              return new Response(response.body, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: mergedHeaders,
+              });
+            } catch (error) {
                     console.error("GraphQL Processing Error:", error);
-					const errorHeaders = new Headers(corsHeaders);
-					errorHeaders.set("Content-Type", "application/json");
+				const errorHeaders = new Headers(corsHeaders);
+				errorHeaders.set("Content-Type", "application/json");
                     return new Response(
                         JSON.stringify({
                             errors: [{
@@ -198,8 +184,8 @@ async function handler(req: Request): Promise<Response> {
                             }]
                         }),
                         {
-							headers: errorHeaders,
-							status: 500,
+					headers: errorHeaders,
+					status: 500,
                         }
                     );
                 }
@@ -246,6 +232,7 @@ async function handler(req: Request): Promise<Response> {
 }
 
 // Create the server
+// deno-lint-ignore no-unused-vars
 const server = new Server({ handler, port: 3000 });
 
 server.listenAndServe();

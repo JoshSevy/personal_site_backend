@@ -9,6 +9,11 @@
     "test": "deno test --allow-all"
   },
   "importMap": "./import_map.json",
+  "compilerOptions": {
+    "lib": ["es2015", "es2017", "es2020", "dom", "deno.ns"],
+    "module": "esnext",
+    "strict": true
+  },
   "fmt": {
     "files": {
       "include": ["**/*.ts", "**/*.js", "**/*.json", "**/*.md"]
