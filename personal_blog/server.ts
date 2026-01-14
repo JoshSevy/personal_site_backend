@@ -4,8 +4,8 @@
 import { Server } from "std/http/server";
 import { GraphQLHTTP } from "gql";
 import { makeExecutableSchema } from "graphql_tools";
-import { resolvers } from "./graphql/resolvers";
-import { typeDefs } from "./graphql/typedefs";
+import { resolvers } from "./graphql/resolvers.ts";
+import { typeDefs } from "./graphql/typedefs.ts";
 
 const BASE_URL = "https://api.joshuasevy.com";
 const ALLOWED_ORIGINS = [
