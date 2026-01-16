@@ -46,6 +46,36 @@ To start the development server:
 npm run dev
 ```
 
+### Running with Deno
+
+To run the server locally in development mode:
+
+```sh
+cd personal_blog
+deno task dev
+```
+
+This will run the server with file watching enabled.
+
+### Environment Variables
+
+Ensure you have a `.env` file in the `personal_blog` directory with the following variables:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `APOLLO_KEY` (for Apollo Studio reporting)
+- `APOLLO_GRAPH_REF` (for Apollo Studio reporting)
+
+### Apollo Studio Schema Reporting
+
+This project uses `ApolloServerPluginSchemaReporting` to automatically push schema changes to Apollo Studio.
+
+When running in development mode (`deno task dev`):
+1. The server watches for file changes.
+2. When you modify `graphql/typedefs.ts`, the server restarts.
+3. The new schema is automatically reported to Apollo Studio on startup.
+
+You can view your graph at: https://studio.apollographql.com/graph/Joshua-Sevys-Team@current/
+
 ## Deployment
 
 Deno is recommended for deploying the API. To deploy with Deno:

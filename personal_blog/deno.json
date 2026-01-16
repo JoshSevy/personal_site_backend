@@ -6,7 +6,9 @@
     "fmt:check": "deno fmt --check",
     "lint": "deno lint",
     "check": "deno check **/*.ts",
-    "test": "deno test --allow-all"
+    "test": "deno test --allow-all",
+    "schema:export": "deno run print_schema.ts > schema.graphql",
+    "schema:publish": "export $(grep -v '^#' .env | xargs) && ~/.rover/bin/rover subgraph publish Joshua-Sevys-Team@current --name api --schema ./schema.graphql --routing-url https://api.joshuasevy.com/graphql"
   },
   "importMap": "./import_map.json",
   "compilerOptions": {

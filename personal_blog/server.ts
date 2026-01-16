@@ -2,8 +2,8 @@
 /// <reference lib="es2020" />
 /// <reference path="./types.d.ts" />
 import { Server } from "std/http/server";
-import { GraphQLHTTP } from "gql";
-import { makeExecutableSchema } from "graphql_tools";
+import { ApolloServer } from "npm:@apollo/server@^4.0.0";
+import { ApolloServerPluginSchemaReporting } from "npm:@apollo/server@^4.0.0/plugin/schemaReporting";
 import { resolvers } from "./graphql/resolvers.ts";
 import { typeDefs } from "./graphql/typedefs.ts";
 
@@ -103,11 +103,17 @@ async function generateSitemap() {
 </urlset>`;
 }
 
-// GraphQL Schema
-const schema = makeExecutableSchema({
-  typeDefs,
-  resolvers,
+// Initialize Apollo Server
+// Apollo Server automatically reads APOLLO_KEY and APOLLO_GRAPH_REF from env for reporting
+const apolloServer = new ApolloServer({
+    typeDefs,
+    resolvers,
+    introspection: true,
+    plugins: [ApolloServerPluginSchemaReporting()],
 });
+
+// Start Apollo Server (must be done before handling requests)
+await apolloServer.start();
 
 // Define the handler function with proper typing
 async function handler(req: Request): Promise<Response> {
@@ -132,49 +138,64 @@ async function handler(req: Request): Promise<Response> {
 
             // Handle OPTIONS (CORS Preflight)
             if (req.method === "OPTIONS") {
-			return new Response(null, { headers: corsHeaders, status: 204 });
+                return new Response(null, { headers: corsHeaders, status: 204 });
             }
 
             // Handle POST (GraphQL Queries/Mutations)
-          if (req.method === "POST") {
-            try {
-              // Extract Authorization header
-              const authHeader = req.headers.get("Authorization");
-              const token = authHeader && authHeader.indexOf("Bearer ") === 0
-                            ? authHeader.substring(7)
-                            : null;
+            if (req.method === "POST") {
+                try {
+                    // Extract body
+                    const body = await req.json().catch(() => ({}));
 
-              const response = await GraphQLHTTP<Request>({
-                schema,
-                context: (request: Request) => ({ request, authToken: token })
-              })(req);
+                    // Map HeaderMap for Apollo
+                    const headers = new Map<string, string>();
+                    req.headers.forEach((value, key) => {
+                        headers.set(key, value);
+                    });
 
-              // merge CORS headers etc (existing logic)
-              const mergedHeaders = new Headers(response.headers);
-              // copy known CORS headers from corsHeaders into mergedHeaders
-              const corsHeaderNames = [
-                  "Access-Control-Allow-Origin",
-                  "Access-Control-Allow-Credentials",
-                  "Access-Control-Allow-Methods",
-                  "Access-Control-Allow-Headers",
-                  "Access-Control-Expose-Headers",
-                  "Access-Control-Max-Age",
-                  "Vary",
-              ];
-              for (let i = 0; i < corsHeaderNames.length; i++) {
-                  const name = corsHeaderNames[i];
-                  const val = corsHeaders.get(name);
-                  if (val !== null) mergedHeaders.set(name, val);
-              }
-              return new Response(response.body, {
-                status: response.status,
-                statusText: response.statusText,
-                headers: mergedHeaders,
-              });
-            } catch (error) {
+                    // Execute via Apollo Server
+                    const httpGraphQLResponse = await apolloServer.executeHTTPGraphQLRequest({
+                        httpGraphQLRequest: {
+                            body,
+                            // deno-lint-ignore no-explicit-any
+                            headers: headers as any,
+                            method: req.method,
+                            search: new URL(req.url).search,
+                        },
+                        context: async () => {
+                            // Extract Authorization header
+                            const authHeader = req.headers.get("Authorization");
+                            const token = authHeader && authHeader.indexOf("Bearer ") === 0
+                                ? authHeader.substring(7)
+                                : null;
+                            return { request: req, authToken: token };
+                        },
+                    });
+
+                    // Build outgoing headers (Merge CORS + Apollo headers)
+                    const responseHeaders = new Headers(corsHeaders);
+                    for (const [key, value] of httpGraphQLResponse.headers) {
+                        responseHeaders.set(key, value);
+                    }
+
+                    if (httpGraphQLResponse.body.kind === 'complete') {
+                        return new Response(httpGraphQLResponse.body.string, {
+                            status: httpGraphQLResponse.status || 200,
+                            headers: responseHeaders,
+                        });
+                    } else {
+                        // For defer/stream support, we'd need to pipe the asyncIterator
+                        // For now we assume standard responses
+                        return new Response("Chunked response not supported in this simple handler yet", {
+                            status: 501,
+                            headers: responseHeaders
+                        });
+                    }
+
+                } catch (error) {
                     console.error("GraphQL Processing Error:", error);
-				const errorHeaders = new Headers(corsHeaders);
-				errorHeaders.set("Content-Type", "application/json");
+                    const errorHeaders = new Headers(corsHeaders);
+                    errorHeaders.set("Content-Type", "application/json");
                     return new Response(
                         JSON.stringify({
                             errors: [{
@@ -184,8 +205,8 @@ async function handler(req: Request): Promise<Response> {
                             }]
                         }),
                         {
-					headers: errorHeaders,
-					status: 500,
+                            headers: errorHeaders,
+                            status: 500,
                         }
                     );
                 }
@@ -232,7 +253,9 @@ async function handler(req: Request): Promise<Response> {
 }
 
 // Create the server
+const port = Number(Deno.env.get("PORT")) || 3000;
 // deno-lint-ignore no-unused-vars
-const server = new Server({ handler, port: 3000 });
+const server = new Server({ handler, port });
 
+console.log(`Server running on http://localhost:${port}`);
 server.listenAndServe();

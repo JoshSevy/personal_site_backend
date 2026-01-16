@@ -10,9 +10,18 @@ if (typeof Deno !== "undefined" && Deno.env && Deno.env.get("DENO_DEPLOYMENT_ID"
     SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 } else {
     // Running locally — use dotenv's config()
-    const env = loadEnv();
-    SUPABASE_URL = env.SUPABASE_URL;
-    SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY;
+    const envLocal = loadEnv({ export: true });
+
+    // Also try to load from personal_blog/.env (e.g. if running from root)
+    // dotenv will not overwrite existing variables, so this is safe to try
+    try {
+        loadEnv({ path: "personal_blog/.env", export: true });
+    } catch (_e) {
+        // Ignore if file not found
+    }
+
+    SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 }
 
 if (!SUPABASE_URL) {
