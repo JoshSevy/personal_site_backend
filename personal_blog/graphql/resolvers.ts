@@ -18,10 +18,15 @@ const POST_WRITE_FIELDS = [
     "hero_image_url",
 ] as const;
 
+/** GraphQL often passes `null` for omitted variables; PostgREST rejects unknown columns if we forward null. */
+function isPresent(value: unknown): boolean {
+    return value !== undefined && value !== null;
+}
+
 function pickDefinedPostFields(args: Record<string, unknown>): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     for (const key of POST_WRITE_FIELDS) {
-        if (args[key] !== undefined) {
+        if (isPresent(args[key])) {
             out[key] = args[key];
         }
     }
@@ -73,7 +78,7 @@ const createPost = async (_: unknown, args: Record<string, unknown>, context: { 
     };
     for (const key of POST_WRITE_FIELDS) {
         if (key === "title" || key === "slug" || key === "content") continue;
-        if (args[key] !== undefined) row[key] = args[key];
+        if (isPresent(args[key])) row[key] = args[key];
     }
     const { data, error } = await client
         .from("posts")
