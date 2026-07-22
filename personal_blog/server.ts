@@ -1,7 +1,6 @@
 /// <reference lib="es2015" />
 /// <reference lib="es2020" />
 /// <reference path="./types.d.ts" />
-import { Server } from "std/http/server";
 import { ApolloServer } from "npm:@apollo/server@^4.0.0";
 import { ApolloServerPluginSchemaReporting } from "npm:@apollo/server@^4.0.0/plugin/schemaReporting";
 import { resolvers } from "./graphql/resolvers.ts";
@@ -254,8 +253,6 @@ async function handler(req: Request): Promise<Response> {
 
 // Create the server
 const port = Number(Deno.env.get("PORT")) || 3000;
-// deno-lint-ignore no-unused-vars
-const server = new Server({ handler, port });
 
 console.log(`Server running on http://localhost:${port}`);
-server.listenAndServe();
+Deno.serve({ port }, handler);
