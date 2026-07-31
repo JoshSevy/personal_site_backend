@@ -1,10 +1,33 @@
 import { supabase, createAuthenticatedClient } from "../supabaseClient.ts";
+import type { SupabaseClient } from "supabase";
 
 function getClient(authToken?: string | null) {
     if (authToken) {
         return createAuthenticatedClient(authToken);
     }
     return supabase;
+}
+
+/**
+ * Verifies the caller is signed in AND flagged as a blog admin, mirroring
+ * isBlogAdminUser() in the frontend (src/app/auth/blog-admin.ts). RLS enforces
+ * this at the database level too, but checking here gives a clear error
+ * instead of an opaque Postgres permission-denied response.
+ */
+async function requireBlogAdmin(context: { authToken?: string | null }): Promise<SupabaseClient> {
+    if (!context?.authToken) {
+        throw new Error("Authentication required");
+    }
+    const client = createAuthenticatedClient(context.authToken);
+    const { data, error } = await client.auth.getUser();
+    if (error || !data?.user) {
+        throw new Error("Authentication required");
+    }
+    const meta = (data.user.app_metadata ?? {}) as Record<string, unknown>;
+    if (meta["blog_admin"] !== true && meta["admin"] !== true) {
+        throw new Error("Not authorized: blog admin access required");
+    }
+    return client;
 }
 
 const POST_WRITE_FIELDS = [
@@ -62,10 +85,7 @@ const getPostBySlug = async (_: unknown, args: { slug: string }, context: { auth
 };
 
 const createPost = async (_: unknown, args: Record<string, unknown>, context: { authToken?: string | null }) => {
-    if (!context?.authToken) {
-        throw new Error("Authentication required to create posts");
-    }
-    const client = getClient(context.authToken);
+    const client = await requireBlogAdmin(context);
     const row: Record<string, unknown> = {
         title: args.title,
         slug: args.slug,
@@ -85,19 +105,15 @@ const createPost = async (_: unknown, args: Record<string, unknown>, context: { 
 };
 
 const updatePost = async (_: unknown, args: Record<string, unknown>, context: { authToken?: string | null }) => {
-    if (!context?.authToken) {
-        throw new Error("Authentication required to update posts");
-    }
+    const client = await requireBlogAdmin(context);
     const id = args.id as string;
     const updates = pickDefinedPostFields(args);
     if (Object.keys(updates).length === 0) {
-        const client = getClient(context.authToken);
         const { data, error } = await client.from("posts").select("*").eq("id", id).single();
         if (error) throw new Error(error.message);
         return data;
     }
 
-    const client = getClient(context.authToken);
     const { data, error } = await client
         .from("posts")
         .update(updates)
@@ -114,10 +130,7 @@ const updatePost = async (_: unknown, args: Record<string, unknown>, context: { 
 };
 
 const deletePost = async (_: unknown, args: { id: string }, context: { authToken?: string | null }) => {
-    if (!context?.authToken) {
-        throw new Error("Authentication required to delete posts");
-    }
-    const client = getClient(context.authToken);
+    const client = await requireBlogAdmin(context);
     const { data, error } = await client
         .from("posts")
         .delete()
