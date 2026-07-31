@@ -40,10 +40,23 @@ export const typeDefs = /* GraphQL */ `
     hero_image_url: String
   }
 
+  type GithubLanguage {
+    name: String!
+    repoCount: Int!
+  }
+
+  type GithubStats {
+    username: String!
+    publicRepos: Int!
+    sourceRepos: Int!
+    memberSince: String!
+    topLanguages: [GithubLanguage!]!
+  }
+
   type Query {
     posts(publishedOnly: Boolean): [Post]
     post(id: ID!): Post
     postBySlug(slug: String!): Post
-    trophies(username: String!): String
+    githubStats(username: String!): GithubStats
   }
 `;
