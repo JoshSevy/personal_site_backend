@@ -131,40 +131,94 @@ const updatePost = async (_: unknown, args: Record<string, unknown>, context: { 
 
 const deletePost = async (_: unknown, args: { id: string }, context: { authToken?: string | null }) => {
     const client = await requireBlogAdmin(context);
+    // maybeSingle(): deleting an id that is already gone returns null rather
+    // than throwing "no rows returned", so repeat deletes are a no-op.
     const { data, error } = await client
         .from("posts")
         .delete()
         .eq("id", args.id)
         .select()
-        .single();
+        .maybeSingle();
     if (error) throw new Error(error.message);
     return data;
 };
 
-const fetchGitHubTrophies = async (username: string): Promise<string> => {
-    try {
-        console.log(`Fetching GitHub trophies for username: ${username}`);
-        const url =
-            `https://github-profile-trophy.vercel.app/?username=${encodeURIComponent(username)}&theme=onedark`;
-        const response = await fetch(url, {
-            headers: {
-                Accept: "image/svg+xml,text/html;q=0.9,*/*;q=0.8",
-                "User-Agent": "personal-site-backend/1.0 (+https://api.joshuasevy.com)",
-            },
-        });
+interface GithubStats {
+    username: string;
+    publicRepos: number;
+    sourceRepos: number;
+    memberSince: string;
+    topLanguages: { name: string; repoCount: number }[];
+}
 
-        if (!response.ok) {
-            console.error(`Failed to fetch trophies. Status: ${response.status}, StatusText: ${response.statusText}`);
-            throw new Error("Failed to fetch trophies from GitHub Profile Trophy.");
-        }
+// GitHub allows 60 unauthenticated requests/hour per IP, and Deno Deploy
+// shares egress IPs, so results are cached to stay well clear of that. Set
+// GITHUB_TOKEN to raise the ceiling to 5000/hour.
+const STATS_CACHE_TTL_MS = 60 * 60 * 1000;
+const statsCache = new Map<string, { at: number; value: GithubStats }>();
 
-        const data = await response.text();
-        console.log("Fetched trophies successfully");
-        return data;
-    } catch (error) {
-        console.error("Error in fetchGitHubTrophies:", error);
-        throw error;
+function githubHeaders(): HeadersInit {
+    const headers: Record<string, string> = {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "personal-site-backend/1.0 (+https://api.joshuasevy.com)",
+    };
+    const token = Deno.env.get("GITHUB_TOKEN");
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
     }
+    return headers;
+}
+
+async function githubJson(url: string): Promise<unknown> {
+    const response = await fetch(url, { headers: githubHeaders() });
+    if (!response.ok) {
+        throw new Error(`GitHub API ${response.status} for ${url}`);
+    }
+    return await response.json();
+}
+
+const fetchGithubStats = async (username: string): Promise<GithubStats> => {
+    const cached = statsCache.get(username);
+    if (cached && Date.now() - cached.at < STATS_CACHE_TTL_MS) {
+        return cached.value;
+    }
+
+    const base = "https://api.github.com";
+    const user = await githubJson(
+        `${base}/users/${encodeURIComponent(username)}`,
+    ) as { public_repos?: number; created_at?: string };
+
+    // public_repos can exceed one page, so walk until a short page comes back.
+    const repos: { fork?: boolean; language?: string | null }[] = [];
+    for (let page = 1; page <= 5; page++) {
+        const batch = await githubJson(
+            `${base}/users/${encodeURIComponent(username)}/repos?per_page=100&page=${page}&type=owner`,
+        ) as { fork?: boolean; language?: string | null }[];
+        repos.push(...batch);
+        if (batch.length < 100) break;
+    }
+
+    const sources = repos.filter((r) => !r.fork);
+    const counts = new Map<string, number>();
+    for (const repo of sources) {
+        if (!repo.language) continue;
+        counts.set(repo.language, (counts.get(repo.language) ?? 0) + 1);
+    }
+    const topLanguages = [...counts.entries()]
+        .map(([name, repoCount]) => ({ name, repoCount }))
+        .sort((a, b) => b.repoCount - a.repoCount || a.name.localeCompare(b.name))
+        .slice(0, 8);
+
+    const value: GithubStats = {
+        username,
+        publicRepos: user.public_repos ?? repos.length,
+        sourceRepos: sources.length,
+        memberSince: (user.created_at ?? "").slice(0, 4),
+        topLanguages,
+    };
+
+    statsCache.set(username, { at: Date.now(), value });
+    return value;
 };
 
 export const resolvers = {
@@ -174,8 +228,8 @@ export const resolvers = {
         post: (_: unknown, args: { id: string }, context: { authToken?: string | null }) => getPost(_, args, context),
         postBySlug: (_: unknown, args: { slug: string }, context: { authToken?: string | null }) =>
             getPostBySlug(_, args, context),
-        trophies: async (_: unknown, args: { username: string }) => {
-            return await fetchGitHubTrophies(args.username);
+        githubStats: async (_: unknown, args: { username: string }) => {
+            return await fetchGithubStats(args.username);
         },
     },
     Mutation: {
